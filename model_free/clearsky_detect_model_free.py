@@ -41,15 +41,12 @@ def model_free_detect(data, window=30, metric_tol=.05, verbose=False):
     components: dict, optional
         contains series of normalized lengths, local integrals, and calculated metric
     '''
-    # data quality check
     if len(pd.unique(data.index.to_series().diff().dropna())) != 1:
         raise NotImplementedError('You must use evenly spaced time series data.')
-    if data.isnull().values.any():
-        raise ValueError('NaN/infinity in data.  Process these first.')
 
     is_clear = pd.Series(False, data.index)
 
-    components = calc_distances_integrals(data, window)
+    components = calc_components(data, window)
     distances = components['local_distances']
     integrals = components['local_integrals']
     metric = pd.Series(np.log(distances) / np.log(integrals), index=data.index)
@@ -63,7 +60,7 @@ def model_free_detect(data, window=30, metric_tol=.05, verbose=False):
         return is_clear
 
 
-def model_free_detect_democratic(data, window=30, metric_tol=.05, vote_pct=0.75, verbose=False):
+def model_free_detect_democratic(data, window=30, metric_tol=.05, vote_pct=0.6, verbose=False):
     '''Determine clear sky periods based on irradiance measurements.
 
     Arguments
@@ -88,17 +85,15 @@ def model_free_detect_democratic(data, window=30, metric_tol=.05, vote_pct=0.75,
     '''
     if len(pd.unique(data.index.to_series().diff().dropna())) != 1:
         raise NotImplementedError('You must use evenly spaced time series data.')
-    if data.isnull().values.any():
-        raise ValueError('NaN/infinity in data.  Process these first.')
 
     is_clear = pd.Series(False, data.index)
 
-    components = calc_distances_integrals(data, window)
+    components = calc_components(data, window)
     distances = components['local_distances']
     integrals = components['local_integrals']
     metric = pd.Series(np.log(distances.values) / np.log(integrals.values), index=data.index)
 
-    H = la.hankel(np.arange(0, len(data) - window),
+    H = la.hankel(np.arange(0, len(data) - window + 1),
                   np.arange(len(data) - window, len(data)))
 
     midpoints = np.apply_along_axis(get_midval, 1, H)
@@ -136,17 +131,15 @@ def model_free_detect_meanval(data, window=30, metric_tol=.05, verbose=False):
     '''
     if len(pd.unique(data.index.to_series().diff().dropna())) != 1:
         raise NotImplementedError('You must use evenly spaced time series data.')
-    if data.isnull().values.any():
-        raise ValueError('NaN/infinity in data.  Process these first.')
 
     is_clear = pd.Series(False, data.index)
 
-    components = calc_distances_integrals(data, window)
+    components = calc_components(data, window)
     distances = components['local_distances']
     integrals = components['local_integrals']
     metric = pd.Series(np.log(distances.values) / np.log(integrals.values), index=data.index)
 
-    H = la.hankel(np.arange(0, len(data) - window),
+    H = la.hankel(np.arange(0, len(data) - window + 1),
                   np.arange(len(data) - window, len(data)))
 
     midpoints = np.apply_along_axis(get_midval, 1, H)
@@ -161,7 +154,7 @@ def model_free_detect_meanval(data, window=30, metric_tol=.05, verbose=False):
         return is_clear
 
 
-def calc_distances_integrals(data, window):
+def calc_components(data, window):
     '''Calculate normalized distances and integrals of moving window.  Values
     are reported at the central index of the window.
 
@@ -179,13 +172,11 @@ def calc_distances_integrals(data, window):
     '''
     if len(pd.unique(data.index.to_series().diff().dropna())) != 1:
         raise NotImplementedError('You must use evenly spaced time series data.')
-    if data.isnull().values.any():
-        raise ValueError('NaN/infinity in data.  Process these first.')
 
     local_distances = pd.Series(np.nan, index=data.index, name='local_distances')
     local_integrals = pd.Series(np.nan, index=data.index, name='local_integrals')
 
-    H = la.hankel(np.arange(0, len(data) - window),
+    H = la.hankel(np.arange(0, len(data) - window + 1),
                   np.arange(len(data) - window, len(data)))
 
     midpoints = np.apply_along_axis(get_midval, 1, H)
@@ -280,3 +271,6 @@ def calc_pct(array, metric_tol):
 
 if __name__ == '__main__':
     main()
+
+
+
